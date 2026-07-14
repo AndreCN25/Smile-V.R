@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="DentalClinic.Api/DentalClinic.Api.csproj" />
+  <Project Path="DentalClinic.Application/DentalClinic.Application.csproj" />
+  <Project Path="DentalClinic.Domain/DentalClinic.Domain.csproj" />
+  <Project Path="DentalClinic.Infrastructure/DentalClinic.Infrastructure.csproj" />
+</Solution>

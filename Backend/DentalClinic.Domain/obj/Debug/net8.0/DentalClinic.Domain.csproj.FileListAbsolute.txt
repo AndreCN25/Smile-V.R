@@ -1,0 +1,11 @@
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\bin\Debug\net8.0\DentalClinic.Domain.deps.json
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\bin\Debug\net8.0\DentalClinic.Domain.dll
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\bin\Debug\net8.0\DentalClinic.Domain.pdb
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\obj\Debug\net8.0\DentalClinic.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\obj\Debug\net8.0\DentalClinic.Domain.AssemblyInfoInputs.cache
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\obj\Debug\net8.0\DentalClinic.Domain.AssemblyInfo.cs
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\obj\Debug\net8.0\DentalClinic.Domain.csproj.CoreCompileInputs.cache
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\obj\Debug\net8.0\DentalClinic.Domain.dll
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\obj\Debug\net8.0\refint\DentalClinic.Domain.dll
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\obj\Debug\net8.0\DentalClinic.Domain.pdb
+C:\Users\andre\OneDrive\Desktop\Clinica Dental\Backend\DentalClinic.Domain\obj\Debug\net8.0\ref\DentalClinic.Domain.dll
