@@ -2,26 +2,17 @@ import { useState } from "react";
 import { Save, CheckCircle, User, Building2, Clock, Bell, Lock, Palette, ChevronRight, Edit2, Trash2, MessageCircle } from "lucide-react";
 import { getWhatsAppConfig, saveWhatsAppConfig, getNotificationPreferences, saveNotificationPreferences, WhatsAppConfig, NotificationPreferences } from "../../services/whatsapp";
 
-import { getDoctors, createDoctor, updateDoctor, getSettings, updateSettings, deleteDoctor, updateUserPassword, deleteUserAccount, loginUser } from "../../services/api";
+import { getSettings, updateSettings, updateUserPassword, deleteUserAccount, loginUser } from "../../services/api";
 
-type SettingsTab = "clinica" | "perfil" | "doctores" | "notificaciones" | "seguridad";
-
-interface Doctor { id: string; name: string; specialty: string; phone: string; email: string; active: boolean; }
-
-
+type SettingsTab = "clinica" | "perfil" | "notificaciones" | "seguridad";
 
 interface SettingsProps { defaultTab?: SettingsTab; }
 
 export function Settings({ defaultTab = "clinica" }: SettingsProps) {
   const [tab, setTab]     = useState<SettingsTab>(defaultTab);
   const [toast, setToast] = useState(false);
-  const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [settingsId, setSettingsId] = useState<string | null>(null);
-  const [editDoctorId, setEditDoctorId] = useState<string | null>(null);
-  const [doctorForm, setDoctorForm] = useState<Omit<Doctor,"id">>({ name:"", specialty:"", phone:"", email:"", active:true });
-  const [showDoctorModal, setShowDoctorModal] = useState(false);
-  const [isCreatingDoctor, setIsCreatingDoctor] = useState(false);
 
   const [clinicForm, setClinicForm] = useState({
     name: "",
@@ -38,7 +29,7 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
   });
 
   useState(() => {
-    Promise.all([getSettings(), getDoctors()]).then(([settings, docs]) => {
+    Promise.all([getSettings()]).then(([settings]) => {
       if (settings) {
         setSettingsId(settings.id);
         setClinicForm({
@@ -55,7 +46,6 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
           hours: settings.hours || "Lunes a Viernes: 9:00–19:00 | Sábados: 9:00–13:00",
         });
       }
-      if (docs) setDoctors(docs);
       setLoading(false);
     }).catch(() => setLoading(false));
   });
@@ -148,40 +138,6 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
     }
   }
 
-  function openEditDoctor(d: Doctor) {
-    const { id, ...rest } = d; setDoctorForm(rest); setEditDoctorId(d.id); setIsCreatingDoctor(false); setShowDoctorModal(true);
-  }
-  function openCreateDoctor() {
-    setDoctorForm({ name:"", specialty:"", phone:"", email:"", active:true }); setEditDoctorId(null); setIsCreatingDoctor(true); setShowDoctorModal(true);
-  }
-  async function saveDoctor() {
-    if (!doctorForm.name) return;
-    try {
-      if (editDoctorId !== null) {
-        const updated = await updateDoctor(editDoctorId, doctorForm);
-        setDoctors(doctors.map((d) => d.id === editDoctorId ? { ...d, ...updated } : d));
-      } else {
-        const nd = await createDoctor(doctorForm);
-        setDoctors([...doctors, nd]);
-      }
-      setShowDoctorModal(false);
-    } catch (e) {
-      console.error(e);
-      alert("Error al guardar doctor: " + (e.message || String(e)));
-    }
-  }
-
-  async function handleDeleteDoctor(id: string) {
-    if (!window.confirm("¿Estás seguro de que deseas eliminar este doctor?")) return;
-    try {
-      await deleteDoctor(id);
-      setDoctors(doctors.filter((d) => d.id !== id));
-    } catch (e) {
-      console.error(e);
-      alert("Error al eliminar doctor: " + ((e as any).message || String(e)));
-    }
-  }
-
   async function handleDeleteAccount() {
     const email = localStorage.getItem("adminEmail") || profileForm.email;
     if (!email || email === "admin@clinicadental.com") {
@@ -234,7 +190,6 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
   const tabs: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }[] = [
     { id: "clinica",        label: "Clínica",        icon: Building2 },
     { id: "perfil",         label: "Mi perfil",      icon: User },
-    { id: "doctores",       label: "Doctores",       icon: User },
     { id: "notificaciones", label: "Notificaciones", icon: Bell },
     { id: "seguridad",      label: "Seguridad",      icon: Lock },
   ];
@@ -390,78 +345,6 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
           <button onClick={save} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90" style={{ background:"var(--primary)", color:"#fff" }}>
             <Save className="w-4 h-4" /> Guardar perfil
           </button>
-        </div>
-      )}
-
-      {/* ── DOCTORES ─── */}
-      {tab === "doctores" && (
-        <div className="space-y-3">
-          <div className="flex justify-end">
-            <button onClick={openCreateDoctor} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold hover:opacity-90" style={{ background:"var(--primary)", color:"#fff" }}>
-              + Agregar doctor
-            </button>
-          </div>
-          {doctors.map((d) => (
-            <div key={d.id} className="bg-card rounded-2xl border p-4 flex items-start gap-3" style={{ borderColor:"var(--border)", opacity: d.active ? 1 : 0.65 }}>
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold shrink-0" style={{ background:"var(--secondary)", color:"var(--primary)" }}>
-                {d.name.split(" ").map((n)=>n[0]).join("").slice(0,2)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold" style={{ color:"var(--foreground)" }}>{d.name}</p>
-                  {!d.active && <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background:"var(--muted)", color:"var(--muted-foreground)" }}>Inactivo</span>}
-                </div>
-                <p className="text-xs mt-0.5" style={{ color:"var(--muted-foreground)" }}>{d.specialty}</p>
-                <p className="text-xs mt-0.5" style={{ color:"var(--muted-foreground)" }}>{d.email}</p>
-              </div>
-              <div className="flex gap-1 shrink-0">
-                <button onClick={() => openEditDoctor(d)} className="p-1.5 rounded-lg hover:bg-muted">
-                  <Edit2 className="w-4 h-4" style={{ color:"var(--muted-foreground)" }} />
-                </button>
-                <button onClick={() => handleDeleteDoctor(d.id)} className="p-1.5 rounded-lg hover:bg-muted">
-                  <Trash2 className="w-4 h-4" style={{ color:"#DC2626" }} />
-                </button>
-              </div>
-            </div>
-          ))}
-          {showDoctorModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-              <div className="bg-card w-full md:max-w-md rounded-2xl shadow-2xl border" style={{ borderColor:"var(--border)" }}>
-                <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor:"var(--border)" }}>
-                  <h3 className="font-semibold" style={{ color:"var(--foreground)" }}>{isCreatingDoctor ? "Nuevo doctor" : "Editar doctor"}</h3>
-                  <button onClick={() => setShowDoctorModal(false)} className="p-1.5 rounded-lg hover:bg-muted">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                  </button>
-                </div>
-                <div className="p-5 space-y-4">
-                  {[
-                    { label:"Nombre completo", key:"name",      type:"text"  },
-                    { label:"Especialidad",    key:"specialty", type:"text"  },
-                    { label:"Teléfono",        key:"phone",     type:"tel"   },
-                    { label:"Correo",          key:"email",     type:"email" },
-                  ].map(({ label, key, type }) => (
-                    <div key={key}>
-                      <label className="block text-sm font-medium mb-1.5" style={{ color:"var(--foreground)" }}>{label}</label>
-                      <input type={type} value={(doctorForm as any)[key]} onChange={(e) => setDoctorForm({ ...doctorForm, [key]: e.target.value })}
-                        className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between p-3 rounded-xl" style={{ background:"var(--muted)" }}>
-                    <p className="text-sm font-medium" style={{ color:"var(--foreground)" }}>Doctor activo</p>
-                    <button onClick={() => setDoctorForm({ ...doctorForm, active: !doctorForm.active })}
-                      className="w-11 h-6 rounded-full relative transition-colors"
-                      style={{ background: doctorForm.active ? "var(--primary)" : "var(--muted-foreground)" }}>
-                      <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all" style={{ left: doctorForm.active ? "calc(100% - 1.375rem)" : "0.125rem" }} />
-                    </button>
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => setShowDoctorModal(false)} className="flex-1 py-2.5 rounded-xl border text-sm font-semibold" style={{ borderColor:"var(--border)", color:"var(--muted-foreground)" }}>Cancelar</button>
-                    <button onClick={saveDoctor} className="flex-1 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90" style={{ background:"var(--primary)", color:"#fff" }}>Guardar</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

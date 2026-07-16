@@ -4,6 +4,7 @@ import { Layout, Section } from "./components/Layout";
 import { Dashboard } from "./components/Dashboard";
 import { Appointments } from "./components/Appointments";
 import { Patients } from "./components/Patients";
+import { Doctors } from "./components/Doctors";
 import { Expedientes } from "./components/Expedientes";
 import { Treatments } from "./components/Treatments";
 import { Promotions } from "./components/Promotions";
@@ -15,7 +16,7 @@ import { Settings } from "./components/Settings";
 export default function App() {
   const [loggedIn, setLoggedIn]       = useState(false);
   const [section, setSection]         = useState<Section>("dashboard");
-  const [settingsTab, setSettingsTab] = useState<"clinica"|"perfil"|"doctores"|"notificaciones"|"seguridad">("clinica");
+  const [settingsTab, setSettingsTab] = useState<"clinica"|"perfil"|"notificaciones"|"seguridad">("clinica");
   const [isSettingUp, setIsSettingUp] = useState(false);
 
   function navigateTo(s: Section) { setSection(s); }
@@ -36,6 +37,7 @@ export default function App() {
       {section === "dashboard"    && <Dashboard onNavigate={navigateTo} />}
       {section === "appointments" && <Appointments />}
       {section === "patients"     && <Patients />}
+      {section === "doctores"     && <Doctors />}
       {section === "expedientes"  && <Expedientes />}
       {section === "treatments"   && <Treatments />}
       {section === "promotions"   && <Promotions />}

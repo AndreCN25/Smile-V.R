@@ -7,12 +7,13 @@ import {
 } from "lucide-react";
 import { getAppointments, getSettings } from "../../services/api";
 
-export type Section = "dashboard" | "appointments" | "patients" | "expedientes" | "treatments" | "promotions" | "reports" | "schedule" | "settings";
+export type Section = "dashboard" | "appointments" | "patients" | "doctores" | "expedientes" | "treatments" | "promotions" | "reports" | "schedule" | "settings";
 
 const navItems: { id: Section; label: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }[] = [
   { id: "dashboard",    label: "Inicio",           icon: LayoutDashboard },
   { id: "appointments", label: "Citas",             icon: Calendar },
   { id: "patients",     label: "Pacientes",         icon: Users },
+  { id: "doctores",     label: "Doctores",          icon: User },
   { id: "expedientes",  label: "Expedientes",       icon: FileText },
   { id: "treatments",   label: "Tratamientos",      icon: Stethoscope },
   { id: "promotions",   label: "Promociones",       icon: Tag },
@@ -24,6 +25,7 @@ const mobileNav: { id: Section; label: string; icon: React.ComponentType<{ class
   { id: "dashboard",    label: "Inicio",    icon: LayoutDashboard },
   { id: "appointments", label: "Citas",     icon: Calendar },
   { id: "patients",     label: "Pacientes", icon: Users },
+  { id: "doctores",     label: "Doctores",  icon: User },
   { id: "promotions",   label: "Promo.",    icon: Tag },
   { id: "reports",      label: "Reportes",  icon: BarChart2 },
 ];
