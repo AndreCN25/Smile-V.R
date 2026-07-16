@@ -6,11 +6,12 @@ import {
 } from "lucide-react";
 import { Patient } from "../data/patients";
 import { getPatients, createPatient, updatePatient, deletePatient, getPatientAppointments } from "../../services/api";
+import { ensurePhonePrefix } from "../../services/whatsapp";
 
 const bloodTypes = ["A+","A-","B+","B-","AB+","AB-","O+","O-"];
 
 const emptyForm: Omit<Patient,"id"|"treatments"> = {
-  name:"", dob:"", gender:"F", phone:"", email:"", address:"", city:"Mérida, Yuc.",
+  name:"", dob:"", gender:"F", phone:"+52", email:"", address:"", city:"Mérida, Yuc.",
   bloodType:"O+", allergies:"Ninguna", medicalConditions:"Ninguna",
   emergencyContact:"", emergencyPhone:"", lastVisit:"", totalVisits:0, balance:0, notes:"", active:true,
 };
@@ -521,9 +522,12 @@ export function Patients() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-1.5" style={{ color:"var(--foreground)" }}>Teléfono *</label>
-                    <input type="tel" value={form.phone} onChange={(e) => setForm({...form,phone:e.target.value})} placeholder="+52 999-000-0000"
-                      className="w-full px-4 py-3 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
+                    <label className="block text-sm font-semibold mb-1.5" style={{ color:"var(--foreground)" }}>Teléfono (WhatsApp) *</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color:"var(--muted-foreground)" }}>+52</span>
+                      <input type="tel" value={form.phone.replace(/^\+52\s?/, '')} onChange={(e) => setForm({...form,phone:"+52" + e.target.value.replace(/^\+52\s?/, '')})} onBlur={() => setForm(f => ({...f, phone: ensurePhonePrefix(f.phone)}))} placeholder="999-000-0000"
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-1.5" style={{ color:"var(--foreground)" }}>Correo electrónico</label>
@@ -579,7 +583,7 @@ export function Patients() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-1.5" style={{ color:"var(--foreground)" }}>Teléfono</label>
-                    <input type="tel" value={form.emergencyPhone} onChange={(e) => setForm({...form,emergencyPhone:e.target.value})}
+                    <input type="tel" value={form.emergencyPhone} onChange={(e) => setForm({...form,emergencyPhone:e.target.value})} onBlur={() => { if (form.emergencyPhone) setForm(f => ({...f, emergencyPhone: ensurePhonePrefix(f.emergencyPhone)})); }}
                       placeholder="+52 999-000-0000"
                       className="w-full px-4 py-3 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
                   </div>

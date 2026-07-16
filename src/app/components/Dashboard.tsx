@@ -1,17 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Calendar, Users, TrendingUp, Clock, CheckCircle2, AlertCircle, XCircle, ChevronRight, ArrowUpRight } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import { getAppointments, getPatients } from "../../services/api";
+import { checkAndSendReminders } from "../../services/whatsapp";
 
 const statusCfg: Record<string, any> = {
+  confirmada: { label: "Confirmada", color: "#0C7A7A", bg: "#E3F2F2", Icon: CheckCircle2 },
   completada: { label: "Completada", color: "#059669", bg: "#ECFDF5", Icon: CheckCircle2 },
   en_curso:   { label: "En curso",   color: "#0C7A7A", bg: "#E3F2F2", Icon: Clock },
   pendiente:  { label: "Pendiente",  color: "#D97706", bg: "#FFFBEB", Icon: AlertCircle },
   cancelada:  { label: "Cancelada",  color: "#DC2626", bg: "#FEF2F2", Icon: XCircle },
 };
-
-const weekData: { dia: string; citas: number }[] = [];
 
 interface DashboardProps {
   onNavigate: (s: any) => void;
@@ -19,16 +19,28 @@ interface DashboardProps {
 
 export function Dashboard({ onNavigate }: DashboardProps) {
   const [appts, setAppts] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
   const [patientsCount, setPatientsCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const reminderChecked = useRef(false);
 
   useState(() => {
     Promise.all([getAppointments(), getPatients()]).then(([a, p]) => {
       if (a) setAppts(a);
-      if (p) setPatientsCount(p.length);
+      if (p) { setPatients(p); setPatientsCount(p.length); }
       setLoading(false);
     }).catch(() => setLoading(false));
   });
+
+  // Check and send reminders for tomorrow's appointments (runs once on load)
+  useEffect(() => {
+    if (!reminderChecked.current && appts.length > 0 && patients.length > 0) {
+      reminderChecked.current = true;
+      checkAndSendReminders(appts, patients).then(({ sent, errors }) => {
+        if (sent > 0) console.log(`📱 Dashboard: ${sent} recordatorio(s) enviado(s)`);
+      });
+    }
+  }, [appts, patients]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayAppts = appts.filter(a => a.date === todayStr);
@@ -185,24 +197,84 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* Weekly citas + Quick actions */}
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 bg-card rounded-2xl border p-4 md:p-5" style={{ borderColor: "var(--border)" }}>
-          <h3 className="font-semibold mb-1 text-sm" style={{ color: "var(--foreground)" }}>Citas por día (esta semana)</h3>
-          <p className="text-xs mb-4" style={{ color: "var(--muted-foreground)" }}>Lun – Sáb · Semana actual</p>
-          {weekData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={120}>
-              <BarChart data={weekData} barSize={28}>
-                <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-                <YAxis hide />
-                <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontSize: 12 }} />
-                <Bar dataKey="citas" fill="var(--primary)" radius={[6, 6, 0, 0]} name="Citas" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-[120px]" style={{ color: "var(--muted-foreground)" }}>
-              <Calendar className="w-8 h-8 mb-2 opacity-20" />
-              <p className="text-xs">Sin citas esta semana todavía</p>
-            </div>
-          )}
+        <div className="md:col-span-2 bg-card rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+          <div className="px-4 md:px-5 pt-4 md:pt-5 pb-3">
+            <h3 className="font-semibold mb-1 text-sm" style={{ color: "var(--foreground)" }}>Citas por día (esta semana)</h3>
+            <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>Lun – Sáb · Semana actual y próximas</p>
+          </div>
+          {(() => {
+            // Build grouped weekly data: today through next 6 days
+            const now = new Date();
+            const dayNames = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+            const days: {label:string; dateStr:string; isToday:boolean; appts:any[]}[] = [];
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(now);
+              d.setDate(d.getDate() + i);
+              const dateStr = d.toISOString().slice(0,10);
+              const dayAppts = appts
+                .filter(a => a.date === dateStr && a.status !== "cancelada")
+                .sort((a,b) => a.time.localeCompare(b.time));
+              days.push({
+                label: i === 0 ? "Hoy" : i === 1 ? "Mañana" : dayNames[d.getDay()],
+                dateStr,
+                isToday: i === 0,
+                appts: dayAppts,
+              });
+            }
+            const hasAny = days.some(d => d.appts.length > 0);
+            if (!hasAny) {
+              return (
+                <div className="flex flex-col items-center justify-center py-10 px-4" style={{ color: "var(--muted-foreground)" }}>
+                  <Calendar className="w-10 h-10 mb-2 opacity-20" />
+                  <p className="text-sm font-medium">Sin citas esta semana</p>
+                  <p className="text-xs mt-1 opacity-70">Las citas aparecerán aquí conforme se agenden</p>
+                </div>
+              );
+            }
+            return (
+              <div className="divide-y max-h-[320px] overflow-y-auto" style={{ borderColor: "var(--border)" }}>
+                {days.map((day) => (
+                  <div key={day.dateStr}>
+                    {/* Day header */}
+                    <div className="flex items-center gap-2 px-4 md:px-5 py-2.5 sticky top-0 z-10" style={{ background: day.isToday ? "var(--secondary)" : "var(--muted)" }}>
+                      <span className={`text-xs font-bold ${day.isToday ? '' : ''}`} style={{ color: day.isToday ? "var(--primary)" : "var(--foreground)" }}>
+                        {day.label}
+                      </span>
+                      <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                        {new Date(day.dateStr+"T00:00").toLocaleDateString("es-MX", { day:"numeric", month:"short" })}
+                      </span>
+                      {day.appts.length > 0 && (
+                        <span className="ml-auto text-xs font-bold px-1.5 py-0.5 rounded-md" style={{ background: day.isToday ? "var(--primary)" : "var(--border)", color: day.isToday ? "#fff" : "var(--muted-foreground)" }}>
+                          {day.appts.length}
+                        </span>
+                      )}
+                    </div>
+                    {/* Appointments for this day */}
+                    {day.appts.length === 0 ? (
+                      <div className="px-4 md:px-5 py-3">
+                        <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>Sin citas</p>
+                      </div>
+                    ) : (
+                      day.appts.map((a: any) => {
+                        const st = statusCfg[a.status] || statusCfg.pendiente;
+                        return (
+                          <div key={a.id} className="flex items-center gap-3 px-4 md:px-5 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => onNavigate("appointments")}>
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: st.color }} />
+                            <span className="text-xs font-bold w-12 shrink-0" style={{ color: "var(--primary)" }}>{a.time}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{a.patient?.name || "Paciente"}</p>
+                              <p className="text-xs truncate" style={{ color: "var(--muted-foreground)" }}>{a.procedure}</p>
+                            </div>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-lg shrink-0" style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="bg-card rounded-2xl border p-4" style={{ borderColor: "var(--border)" }}>

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Save, CheckCircle, User, Building2, Clock, Bell, Lock, Palette, ChevronRight, Edit2, Trash2 } from "lucide-react";
+import { Save, CheckCircle, User, Building2, Clock, Bell, Lock, Palette, ChevronRight, Edit2, Trash2, MessageCircle } from "lucide-react";
+import { getWhatsAppConfig, saveWhatsAppConfig, getNotificationPreferences, saveNotificationPreferences, WhatsAppConfig, NotificationPreferences } from "../../services/whatsapp";
 
 import { getDoctors, createDoctor, updateDoctor, getSettings, updateSettings, deleteDoctor, updateUserPassword, deleteUserAccount, loginUser } from "../../services/api";
 
@@ -78,15 +79,8 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
     bio: localStorage.getItem("adminBio") || "",
   });
 
-  const [notifForm, setNotifForm] = useState({
-    citaRecordatorio: true,
-    citaConfirmacion: true,
-    nuevoPaciente: true,
-    promoVencimiento: true,
-    balancePendiente: false,
-    email: true,
-    whatsapp: true,
-  });
+  const [notifForm, setNotifForm] = useState<NotificationPreferences>(() => getNotificationPreferences());
+  const [waConfig, setWaConfig] = useState<WhatsAppConfig>(() => getWhatsAppConfig());
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -102,6 +96,7 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
         localStorage.setItem("clinicName", clinicForm.name);
         localStorage.setItem("clinicLogo", clinicForm.logoUrl || "");
         localStorage.setItem("clinicSlogan", clinicForm.slogan || "");
+        saveWhatsAppConfig(waConfig);
         window.dispatchEvent(new Event("clinicUpdated"));
       } else if (tab === "perfil") {
         localStorage.setItem("adminName", profileForm.name);
@@ -110,6 +105,9 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
         localStorage.setItem("adminPhone", profileForm.phone);
         localStorage.setItem("adminBio", profileForm.bio);
         window.dispatchEvent(new Event("profileUpdated"));
+      } else if (tab === "notificaciones") {
+        saveNotificationPreferences(notifForm);
+        saveWhatsAppConfig(waConfig);
       } else if (tab === "seguridad") {
         const currentStoredPassword = localStorage.getItem("adminPassword") || "19750120";
         if (passwordForm.currentPassword !== currentStoredPassword) {
@@ -307,6 +305,53 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
                 className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
             </div>
           </div>
+
+          {/* WhatsApp API Configuration */}
+          <div className="mt-6 pt-5 border-t" style={{ borderColor:"var(--border)" }}>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background:"#25D366", color:"#fff" }}>
+                <MessageCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold" style={{ color:"var(--foreground)" }}>WhatsApp Business API</h4>
+                <p className="text-xs" style={{ color:"var(--muted-foreground)" }}>Configura las credenciales de Meta Cloud API para enviar mensajes</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color:"var(--foreground)" }}>Phone Number ID</label>
+                <input type="text" value={waConfig.phoneNumberId} onChange={(e) => setWaConfig({ ...waConfig, phoneNumberId: e.target.value })}
+                  placeholder="Ej: 123456789012345"
+                  className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color:"var(--foreground)" }}>Access Token</label>
+                <input type="password" value={waConfig.accessToken} onChange={(e) => setWaConfig({ ...waConfig, accessToken: e.target.value })}
+                  placeholder="EAAxxxxxxx..."
+                  className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
+              </div>
+              <div className="sm:col-span-2">
+                <div className="flex items-center justify-between p-3 rounded-xl" style={{ background:"var(--muted)" }}>
+                  <div>
+                    <p className="text-sm font-medium" style={{ color:"var(--foreground)" }}>Activar envío de mensajes</p>
+                    <p className="text-xs mt-0.5" style={{ color:"var(--muted-foreground)" }}>{waConfig.enabled ? "Los mensajes se enviarán automáticamente" : "Los mensajes están desactivados"}</p>
+                  </div>
+                  <button onClick={() => setWaConfig({ ...waConfig, enabled: !waConfig.enabled })}
+                    className="w-11 h-6 rounded-full relative transition-colors shrink-0"
+                    style={{ background: waConfig.enabled ? "#25D366" : "var(--muted-foreground)" }}>
+                    <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all" style={{ left: waConfig.enabled ? "calc(100% - 1.375rem)" : "0.125rem" }} />
+                  </button>
+                </div>
+              </div>
+            </div>
+            {!waConfig.phoneNumberId && (
+              <div className="mt-3 p-3 rounded-xl text-xs" style={{ background:"#FFFBEB", color:"#92400E", border:"1px solid #FDE68A" }}>
+                <p className="font-semibold">⚠ Credenciales no configuradas</p>
+                <p className="mt-1">Para enviar mensajes de WhatsApp necesitas una cuenta de Meta Business. Visita <a href="https://developers.facebook.com" target="_blank" rel="noopener" className="underline font-semibold">developers.facebook.com</a> para configurarla.</p>
+              </div>
+            )}
+          </div>
+
           <button onClick={save} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90" style={{ background:"var(--primary)", color:"#fff" }}>
             <Save className="w-4 h-4" /> Guardar cambios
           </button>

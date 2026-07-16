@@ -5,6 +5,7 @@ import {
   XCircle, User, FileText, DollarSign, Stethoscope, AlertTriangle
 } from "lucide-react";
 import { getAppointments, createAppointment, updateAppointment, deleteAppointment, getPatients, getDoctors } from "../../services/api";
+import { sendAppointmentConfirmation, sendAppointmentCancellation, getNotificationPreferences } from "../../services/whatsapp";
 
 /* ── Types ─────────────────────────────────────────────── */
 type Status = "pendiente" | "completada" | "cancelada" | "en_curso" | "confirmada";
@@ -143,6 +144,7 @@ export function Appointments() {
   const [calMonth, setCalMonth]   = useState(() => { const d = new Date(); return { year:d.getFullYear(), month:d.getMonth() }; });
   const [showMobileDetail, setShowMobileDetail] = useState(false);
   const [formError, setFormError] = useState("");
+  const [waToast, setWaToast] = useState<{show:boolean;ok:boolean;msg:string}>({show:false,ok:false,msg:""});
 
   useEffect(() => {
     Promise.all([getAppointments(), getPatients(), getDoctors()]).then(([apts, pats, docs]) => {
@@ -220,6 +222,26 @@ export function Appointments() {
       setAppts(newAppts);
       const sel = newAppts.find((a) => a.id === id);
       if (sel) setSelected(sel);
+
+      // Send WhatsApp message on confirm or cancel
+      if (status === "confirmada" || status === "cancelada") {
+        const appt = appts.find((a) => a.id === id);
+        if (appt) {
+          const patient = patients.find((p) => p.id === appt.patientId);
+          if (patient && patient.phone) {
+            const result = status === "confirmada"
+              ? await sendAppointmentConfirmation(patient.name, patient.phone, appt.date, appt.time)
+              : await sendAppointmentCancellation(patient.name, patient.phone, appt.date, appt.time);
+            
+            if (result.ok) {
+              setWaToast({show:true, ok:true, msg:`Mensaje de ${status === "confirmada" ? "confirmación" : "cancelación"} enviado a ${patient.name}`});
+            } else {
+              setWaToast({show:true, ok:false, msg: result.error || "No se pudo enviar el mensaje"});
+            }
+            setTimeout(() => setWaToast({show:false,ok:false,msg:""}), 4000);
+          }
+        }
+      }
     } catch (e) { console.error(e); }
   }
 
@@ -234,6 +256,14 @@ export function Appointments() {
 
   return (
     <div className="flex h-full overflow-hidden" style={{ fontFamily:"'DM Sans', sans-serif" }}>
+
+      {/* WhatsApp toast */}
+      {waToast.show && (
+        <div className="fixed top-4 right-4 z-[100] flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl text-sm font-medium max-w-sm animate-in slide-in-from-right" style={{ background: waToast.ok ? "#ECFDF5" : "#FEF2F2", color: waToast.ok ? "#059669" : "#DC2626", border: `1px solid ${waToast.ok ? "#D1FAE5" : "#FCA5A5"}` }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.665 0-3.228-.5-4.528-1.358l-.325-.192-2.87.852.852-2.87-.192-.325A7.96 7.96 0 014 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/></svg>
+          <span>{waToast.msg}</span>
+        </div>
+      )}
 
       {/* ── LEFT PANEL ─────────────────────────────────── */}
       <div className={`flex flex-col border-r bg-card ${showMobileDetail ? "hidden md:flex" : "flex"} md:w-80 lg:w-96 shrink-0 h-full`} style={{ borderColor:"var(--border)" }}>
