@@ -21,11 +21,8 @@ namespace DentalClinic.Infrastructure.Persistence
         {
             base.OnModelCreating(modelBuilder);
             
-            modelBuilder.Entity<User>().ToTable("app_users");
+            modelBuilder.Entity<User>().ToTable("Users");
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
-            modelBuilder.Entity<User>().Property(u => u.PasswordHash).HasColumnName("password_hash");
-            modelBuilder.Entity<User>().Property(u => u.FailedLoginAttempts).HasColumnName("failed_login_attempts");
-            modelBuilder.Entity<User>().Property(u => u.LockoutEnd).HasColumnName("lockout_end");
             
             modelBuilder.Entity<Patient>().ToTable("patients");
             modelBuilder.Entity<Doctor>().ToTable("doctors");
