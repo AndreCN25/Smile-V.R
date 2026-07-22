@@ -15,8 +15,15 @@ namespace DentalClinic.Domain.Interfaces
         Task DeleteAsync(T entity);
     }
 
+    public interface IUserRepository : IRepository<User>
+    {
+        Task<User?> GetByEmailAsync(string email);
+        Task<bool> ExistsByRoleAsync(string role);
+    }
+
     public interface IUnitOfWork : IDisposable
     {
+        IUserRepository Users { get; }
         IRepository<Patient> Patients { get; }
         IRepository<Doctor> Doctors { get; }
         IRepository<Appointment> Appointments { get; }

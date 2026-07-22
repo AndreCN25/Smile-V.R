@@ -19,6 +19,8 @@ build/
 Thumbs.db
 
 # Backend .NET
+bin/
+obj/
 Backend/**/bin/
 Backend/**/obj/
 

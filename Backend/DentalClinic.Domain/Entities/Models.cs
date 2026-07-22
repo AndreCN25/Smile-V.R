@@ -7,13 +7,10 @@ namespace DentalClinic.Domain.Entities
         public string Email { get; set; } = string.Empty;
         public string PasswordHash { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
-        public Guid RoleId { get; set; }
-        public Role? Role { get; set; }
-    }
-
-    public class Role : BaseEntity {
-        public string Name { get; set; } = string.Empty;
-        public ICollection<User> Users { get; set; } = new List<User>();
+        public string Role { get; set; } = "Administrador";
+        public bool Active { get; set; } = true;
+        public int FailedLoginAttempts { get; set; } = 0;
+        public DateTime? LockoutEnd { get; set; }
     }
 
     public class Patient : BaseEntity {

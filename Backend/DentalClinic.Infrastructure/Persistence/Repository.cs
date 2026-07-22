@@ -32,11 +32,23 @@ namespace DentalClinic.Infrastructure.Persistence
         }
     }
 
+    public class UserRepository : Repository<User>, IUserRepository
+    {
+        public UserRepository(DentalClinicDbContext context) : base(context) { }
+        
+        public async Task<User?> GetByEmailAsync(string email)
+            => await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        
+        public async Task<bool> ExistsByRoleAsync(string role)
+            => await _context.Users.AnyAsync(u => u.Role == role);
+    }
+
     // HEAP vs STACK comment: UnitOfWork maneja el ciclo de vida del DbContext que esta en el HEAP (Memoria administrada por GC).
     public class UnitOfWork : IUnitOfWork
     {
         private readonly DentalClinicDbContext _context;
         
+        public IUserRepository Users { get; }
         public IRepository<Patient> Patients { get; }
         public IRepository<Doctor> Doctors { get; }
         public IRepository<Appointment> Appointments { get; }
@@ -47,6 +59,7 @@ namespace DentalClinic.Infrastructure.Persistence
         public UnitOfWork(DentalClinicDbContext context)
         {
             _context = context;
+            Users = new UserRepository(_context);
             Patients = new Repository<Patient>(_context);
             Doctors = new Repository<Doctor>(_context);
             Appointments = new Repository<Appointment>(_context);

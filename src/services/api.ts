@@ -1,3 +1,4 @@
+import axios from "axios";
 import { supabase } from "../config/supabase";
 import { DB_CONFIG } from "../config/database";
 
@@ -30,209 +31,229 @@ export function getErrorLogs(): ErrorLog[] {
 }
 export function clearErrorLogs() { localStorage.removeItem('app_error_logs'); }
 
-// ── LOGIN ──────────────────────────────────────────────────
-export async function loginUser(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
-  if (email === DB_CONFIG.adminEmail && password === DB_CONFIG.adminPassword) return { ok: true };
+// ── AXIOS INSTANCE ───────────────────────────────────────────
+const api = axios.create({
+  baseURL: DB_CONFIG.apiBaseUrl + "/api",
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ── AUTH ──────────────────────────────────────────────────
+export async function loginUser(email: string, password: string): Promise<{ ok: boolean; token?: string; user?: any; error?: string }> {
   try {
-    const { data, error } = await supabase.from('users').select('*').eq('email', email).eq('password', password).single();
-    if (data && !error) return { ok: true };
-  } catch (e: any) { logError("users", "LOGIN", e.message); }
-  return { ok: false, error: "Correo o contraseña incorrectos." };
+    const res = await api.post("/auth/login", { email, password });
+    return { ok: true, token: res.data.token, user: res.data.user };
+  } catch (e: any) {
+    logError("auth/login", "POST", e.message);
+    const errorMsg = e.response?.data?.error || "Correo o contraseña incorrectos.";
+    return { ok: false, error: errorMsg };
+  }
+}
+
+export async function validateToken(): Promise<any | null> {
+  try {
+    const res = await api.get("/auth/validate");
+    return res.data;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ── USER MANAGEMENT ───────────────────────────────────────
+export async function getUsers() {
+  const res = await api.get("/users");
+  return res.data;
+}
+
+export async function createUser(data: any) {
+  const res = await api.post("/users", data);
+  return res.data;
+}
+
+export async function updateUser(id: string, data: any) {
+  const res = await api.put(`/users/${id}`, data);
+  return res.data;
+}
+
+export async function deleteUser(id: string) {
+  await api.delete(`/users/${id}`);
+}
+
+export async function toggleUserActive(id: string) {
+  const res = await api.put(`/users/${id}/toggle-active`);
+  return res.data;
 }
 
 export async function updateUserPassword(email: string, newPassword: string) {
-  const { data, error } = await supabase.from('users').update({ password: newPassword }).eq('email', email).select();
-  if (error) throw new Error(error.message);
-  return data;
-}
-
-export async function registerUser(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
-  try {
-    // Check if user already exists
-    const { data: existing } = await supabase.from('users').select('id').eq('email', email);
-    if (existing && existing.length > 0) {
-      return { ok: false, error: "Este correo ya está registrado." };
-    }
-    const { data, error } = await supabase.from('users').insert([{ email, password, role: 'admin' }]).select().single();
-    if (error) return { ok: false, error: error.message };
-    if (data) return { ok: true };
-    return { ok: false, error: "No se pudo crear la cuenta." };
-  } catch (e: any) {
-    logError("users", "REGISTER", e.message);
-    return { ok: false, error: "Error al registrar: " + e.message };
+  const res = await api.get("/users");
+  const users = res.data;
+  const user = users.find((u: any) => u.email === email);
+  if (user) {
+    await api.put(`/users/${user.id}/reset-password`, { newPassword });
+  } else {
+    throw new Error("User not found");
   }
 }
 
-export async function deleteUserAccount(email: string) {
-  try {
-    const { error } = await supabase.from('users').delete().eq('email', email);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  } catch (e: any) {
-    logError("users", "DELETE", e.message);
-    return { ok: false, error: e.message };
-  }
+export async function resetUserPassword(id: string, newPassword: string) {
+  await api.put(`/users/${id}/reset-password`, { newPassword });
 }
 
 // ── PACIENTES ──────────────────────────────────────────────
 export async function getPatients() {
-  const { data, error } = await supabase.from('patients').select('*').order('created_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return data || [];
+  const res = await api.get("/patients");
+  return res.data;
 }
 
 export async function createPatient(patient: any) {
   const { id, ...payload } = patient;
   if (payload.dob === "") payload.dob = null;
-  const { data, error } = await supabase.from('patients').insert([payload]).select().single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.post("/patients", payload);
+  return res.data;
 }
 
 export async function updatePatient(id: string, updates: any) {
   const { id: _, ...payload } = updates;
   if (payload.dob === "") payload.dob = null;
-  const { data, error } = await supabase.from('patients').update(payload).eq('id', id).select().single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.put(`/patients/${id}`, payload);
+  return res.data;
 }
 
 export async function deletePatient(id: string) {
-  const { error } = await supabase.from('patients').delete().eq('id', id);
-  if (error) throw new Error(error.message);
+  await api.delete(`/patients/${id}`);
 }
 
 // ── DOCTORES ───────────────────────────────────────────────
 export async function getDoctors() {
-  const { data, error } = await supabase.from('doctors').select('*').order('created_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return data || [];
+  const res = await api.get("/doctors");
+  return res.data;
 }
 
 export async function createDoctor(doctor: any) {
   const { id, ...payload } = doctor;
-  const { data, error } = await supabase.from('doctors').insert([payload]).select().single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.post("/doctors", payload);
+  return res.data;
 }
 
 export async function updateDoctor(id: string, updates: any) {
   const { id: _, ...payload } = updates;
-  const { data, error } = await supabase.from('doctors').update(payload).eq('id', id).select().single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.put(`/doctors/${id}`, payload);
+  return res.data;
 }
 
 export async function deleteDoctor(id: string) {
-  const { error } = await supabase.from('doctors').delete().eq('id', id);
-  if (error) throw new Error(error.message);
+  await api.delete(`/doctors/${id}`);
 }
 
 // ── CITAS ──────────────────────────────────────────────────
 export async function getAppointments() {
-  const { data, error } = await supabase.from('appointments').select('*, patient:patients(name), doctor:doctors(name)').order('created_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return data || [];
+  const res = await api.get("/appointments");
+  return res.data;
 }
 
 export async function getPatientAppointments(patientId: string) {
-  const { data, error } = await supabase.from('appointments').select('*, doctor:doctors(name)').eq('patientId', patientId).order('date', { ascending: false });
-  if (error) throw new Error(error.message);
-  return data || [];
+  const res = await api.get(`/appointments?patientId=${patientId}`);
+  return res.data;
 }
 
 export async function createAppointment(appt: any) {
   const { id, patient, doctor, ...payload } = appt;
-  const { data, error } = await supabase.from('appointments').insert([payload]).select('*, patient:patients(name), doctor:doctors(name)').single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.post("/appointments", payload);
+  return res.data;
 }
 
 export async function updateAppointment(id: string, updates: any) {
   const { id: _, patient, doctor, ...payload } = updates;
-  const { data, error } = await supabase.from('appointments').update(payload).eq('id', id).select('*, patient:patients(name), doctor:doctors(name)').single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.put(`/appointments/${id}`, payload);
+  return res.data;
 }
 
 export async function deleteAppointment(id: string) {
-  const { error } = await supabase.from('appointments').delete().eq('id', id);
-  if (error) throw new Error(error.message);
+  await api.delete(`/appointments/${id}`);
 }
 
 // ── TRATAMIENTOS (CATÁLOGO) ────────────────────────────────
 export async function getTreatments() {
-  const { data, error } = await supabase.from('treatments').select('*').order('created_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return data || [];
+  const res = await api.get("/treatments");
+  return res.data;
 }
 
 export async function createTreatment(t: any) {
   const { id, ...payload } = t;
-  const { data, error } = await supabase.from('treatments').insert([payload]).select().single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.post("/treatments", payload);
+  return res.data;
 }
 
 export async function updateTreatment(id: string, updates: any) {
   const { id: _, ...payload } = updates;
-  const { data, error } = await supabase.from('treatments').update(payload).eq('id', id).select().single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.put(`/treatments/${id}`, payload);
+  return res.data;
 }
 
 export async function deleteTreatment(id: string) {
-  const { error } = await supabase.from('treatments').delete().eq('id', id);
-  if (error) throw new Error(error.message);
+  await api.delete(`/treatments/${id}`);
 }
 
 // ── PROMOCIONES ────────────────────────────────────────────
 export async function getPromotions() {
-  const { data, error } = await supabase.from('promotions').select('*').order('created_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return data || [];
+  const res = await api.get("/promotions");
+  return res.data;
 }
 
 export async function createPromotion(p: any) {
   const { id, ...payload } = p;
-  const { data, error } = await supabase.from('promotions').insert([payload]).select().single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.post("/promotions", payload);
+  return res.data;
 }
 
 export async function updatePromotion(id: string, updates: any) {
   const { id: _, ...payload } = updates;
-  const { data, error } = await supabase.from('promotions').update(payload).eq('id', id).select().single();
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api.put(`/promotions/${id}`, payload);
+  return res.data;
 }
 
 export async function deletePromotion(id: string) {
-  const { error } = await supabase.from('promotions').delete().eq('id', id);
-  if (error) throw new Error(error.message);
+  await api.delete(`/promotions/${id}`);
 }
 
 // ── SETTINGS ───────────────────────────────────────────────
 export async function getSettings() {
-  const { data, error } = await supabase.from('clinicsettings').select('*').limit(1);
-  if (error) throw new Error(error.message);
-  return (data && data.length > 0) ? data[0] : null;
+  const res = await api.get("/clinicsettings");
+  // Assuming backend returns an array or single object
+  return Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : res.data;
 }
 
 export async function updateSettings(id: string | null, updates: any) {
   const { id: _, ...payload } = updates;
   if (!id) {
-    const { data, error } = await supabase.from('clinicsettings').insert([payload]).select().single();
-    if (error) throw new Error(error.message);
-    return data;
+    const res = await api.post("/clinicsettings", payload);
+    return res.data;
   } else {
-    const { data, error } = await supabase.from('clinicsettings').update(payload).eq('id', id).select().single();
-    if (error) throw new Error(error.message);
-    return data;
+    const res = await api.put(`/clinicsettings/${id}`, payload);
+    return res.data;
   }
 }
 
 // ── AGENDA (HORARIOS Y BLOQUEOS) ───────────────────────────
+// Schedules and BlockedDates endpoints do NOT exist in the backend. Keep using Supabase for those.
 export async function getSchedules() {
   const { data, error } = await supabase.from('schedules').select('*');
   if (error) throw new Error(error.message);
@@ -249,8 +270,7 @@ export async function getBlockedDates() {
   return data || [];
 }
 export async function createBlockedDate(payload: any) {
-  const { id, ...dataToInsert } = payload;
-  const { data, error } = await supabase.from('blocked_dates').insert([dataToInsert]).select().single();
+  const { data, error } = await supabase.from('blocked_dates').insert([payload]).select().single();
   if (error) throw new Error(error.message);
   return data;
 }

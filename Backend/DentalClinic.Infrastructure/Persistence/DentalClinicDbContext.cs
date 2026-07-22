@@ -9,7 +9,6 @@ namespace DentalClinic.Infrastructure.Persistence
         public DentalClinicDbContext(DbContextOptions<DentalClinicDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
-        public DbSet<Role> Roles { get; set; }
         public DbSet<Patient> Patients { get; set; }
         public DbSet<Doctor> Doctors { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
@@ -21,6 +20,12 @@ namespace DentalClinic.Infrastructure.Persistence
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            
+            modelBuilder.Entity<User>().ToTable("app_users");
+            modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+            modelBuilder.Entity<User>().Property(u => u.PasswordHash).HasColumnName("password_hash");
+            modelBuilder.Entity<User>().Property(u => u.FailedLoginAttempts).HasColumnName("failed_login_attempts");
+            modelBuilder.Entity<User>().Property(u => u.LockoutEnd).HasColumnName("lockout_end");
             
             modelBuilder.Entity<Patient>().ToTable("patients");
             modelBuilder.Entity<Doctor>().ToTable("doctors");

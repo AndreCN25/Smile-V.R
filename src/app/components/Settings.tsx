@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Save, CheckCircle, User, Building2, Clock, Bell, Lock, Palette, ChevronRight, Edit2, Trash2, MessageCircle } from "lucide-react";
 import { getWhatsAppConfig, saveWhatsAppConfig, getNotificationPreferences, saveNotificationPreferences, WhatsAppConfig, NotificationPreferences } from "../../services/whatsapp";
 
-import { getSettings, updateSettings, updateUserPassword, deleteUserAccount, loginUser } from "../../services/api";
+import { getSettings, updateSettings, updateUserPassword, loginUser } from "../../services/api";
 
 type SettingsTab = "clinica" | "perfil" | "notificaciones" | "seguridad";
 
@@ -135,53 +135,6 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
     } catch (e) {
       console.error(e);
       alert("Error al guardar");
-    }
-  }
-
-  async function handleDeleteAccount() {
-    const email = localStorage.getItem("adminEmail") || profileForm.email;
-    if (!email || email === "admin@clinicadental.com") {
-      alert("No se puede determinar la cuenta actual. Asegúrate de haber iniciado sesión correctamente.");
-      return;
-    }
-
-    const p = window.prompt("Ingresa tu contraseña actual para confirmar la eliminación de tu cuenta:");
-    if (p === null || p.trim() === "") return;
-
-    // Verify password - check localStorage first, then try DB login
-    const storedPassword = localStorage.getItem("adminPassword");
-    let passwordValid = false;
-
-    if (storedPassword && p === storedPassword) {
-      passwordValid = true;
-    } else {
-      // Try verifying against DB
-      try {
-        const res = await loginUser(email, p);
-        if (res.ok) passwordValid = true;
-      } catch (_) {}
-    }
-
-    if (!passwordValid) {
-      alert("Contraseña incorrecta. No se pudo eliminar la cuenta.");
-      return;
-    }
-
-    if (!window.confirm("¿ESTÁS TOTALMENTE SEGURO?\n\nEsta acción eliminará tu cuenta permanentemente y perderás el acceso. No se puede deshacer.")) return;
-
-    const res = await deleteUserAccount(email);
-    if (res.ok) {
-      // Clear all session data
-      localStorage.removeItem("adminEmail");
-      localStorage.removeItem("adminPassword");
-      localStorage.removeItem("adminName");
-      localStorage.removeItem("adminRole");
-      localStorage.removeItem("adminPhone");
-      localStorage.removeItem("adminBio");
-      alert("Tu cuenta ha sido eliminada exitosamente.");
-      window.location.reload();
-    } else {
-      alert("Error al eliminar la cuenta: " + (res.error || "Error desconocido"));
     }
   }
 

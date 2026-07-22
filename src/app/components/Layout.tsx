@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { getAppointments, getSettings } from "../../services/api";
 
-export type Section = "dashboard" | "appointments" | "patients" | "doctores" | "expedientes" | "treatments" | "promotions" | "reports" | "schedule" | "settings";
+export type Section = "dashboard" | "appointments" | "patients" | "doctores" | "expedientes" | "treatments" | "promotions" | "reports" | "schedule" | "settings" | "users";
 
 const navItems: { id: Section; label: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }[] = [
   { id: "dashboard",    label: "Inicio",           icon: LayoutDashboard },
@@ -60,9 +60,10 @@ interface LayoutProps {
   onLogout: () => void;
   onEditProfile: () => void;
   children: React.ReactNode;
+  userRole?: string;
 }
 
-export function Layout({ active, onNavigate, onLogout, onEditProfile, children }: LayoutProps) {
+export function Layout({ active, onNavigate, onLogout, onEditProfile, children, userRole }: LayoutProps) {
   const [mobileOpen, setMobileOpen]   = useState(false);
   const [notifOpen, setNotifOpen]     = useState(false);
   const [notifDetail, setNotifDetail] = useState<Notification | null>(null);
@@ -199,6 +200,17 @@ export function Layout({ active, onNavigate, onLogout, onEditProfile, children }
               <Settings className="w-4.5 h-4.5 shrink-0" />
               <span className="text-sm font-medium">Configuración</span>
             </button>
+            {userRole === "Developer" && (
+              <button onClick={() => onNavigate("users")}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left transition-all mt-1"
+                style={{ background: active === "users" ? "var(--sidebar-accent)" : "transparent", color: active === "users" ? "var(--sidebar-accent-foreground)" : "rgba(255,255,255,0.6)" }}
+                onMouseEnter={(e) => { if (active !== "users") { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.9)"; } }}
+                onMouseLeave={(e) => { if (active !== "users") { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; } }}
+              >
+                <ShieldAlert className="w-4.5 h-4.5 shrink-0" />
+                <span className="text-sm font-medium">Gestión de Usuarios</span>
+              </button>
+            )}
           </div>
         </nav>
 
@@ -209,7 +221,7 @@ export function Layout({ active, onNavigate, onLogout, onEditProfile, children }
             </button>
             <div className="flex-1 min-w-0">
               <button onClick={onEditProfile} className="text-xs font-semibold leading-none truncate block hover:underline" style={{ color: "var(--sidebar-foreground)" }}>{adminName}</button>
-              <p className="text-xs mt-1 truncate" style={{ color: "rgba(255,255,255,0.4)" }}>Administrador</p>
+              <p className="text-xs mt-1 truncate" style={{ color: "rgba(255,255,255,0.4)" }}>{userRole === "Developer" ? "Developer" : "Administrador"}</p>
             </div>
             <button onClick={onLogout} className="p-1 rounded-lg hover:bg-white/10 transition-colors" title="Cerrar sesión">
               <LogOut className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.5)" }} />
@@ -244,7 +256,7 @@ export function Layout({ active, onNavigate, onLogout, onEditProfile, children }
               </button>
             </div>
             <nav className="flex-1 py-4 px-3 flex flex-col gap-0.5 overflow-y-auto">
-              {[...navItems, { id: "settings" as Section, label: "Configuración", icon: Settings }].map(({ id, label, icon: Icon }) => {
+              {[...navItems, { id: "settings" as Section, label: "Configuración", icon: Settings }, ...(userRole === "Developer" ? [{ id: "users" as Section, label: "Gestión de Usuarios", icon: ShieldAlert }] : [])].map(({ id, label, icon: Icon }) => {
                 const isActive = id === active;
                 return (
                   <button key={id} onClick={() => { onNavigate(id); setMobileOpen(false); }}

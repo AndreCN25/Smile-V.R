@@ -1,11 +1,13 @@
 namespace DentalClinic.Api.Controllers
 {
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Authorization;
     using System.Threading.Tasks;
     using System;
     using DentalClinic.Domain.Entities;
     using DentalClinic.Domain.Interfaces;
 
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class PatientsController : ControllerBase
@@ -42,6 +44,7 @@ namespace DentalClinic.Api.Controllers
         }
     }
 
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class DoctorsController : ControllerBase
@@ -78,6 +81,7 @@ namespace DentalClinic.Api.Controllers
         }
     }
 
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class AppointmentsController : ControllerBase
@@ -114,6 +118,7 @@ namespace DentalClinic.Api.Controllers
         }
     }
 
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class TreatmentsController : ControllerBase
@@ -150,6 +155,7 @@ namespace DentalClinic.Api.Controllers
         }
     }
 
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class PromotionsController : ControllerBase
@@ -186,6 +192,7 @@ namespace DentalClinic.Api.Controllers
         }
     }
 
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ClinicSettingsController : ControllerBase
