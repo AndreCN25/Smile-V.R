@@ -45,7 +45,7 @@ function doExportExcel(data: TableData, filename: string) {
     </head><body>
     <h2 style="color:#0C7A7A;font-family:Arial;margin-bottom:4px;">${data.title}</h2>
     <p style="color:#6B80A0;font-family:Arial;font-size:12px;margin-bottom:16px;">
-      Creando Sonrisas Yucatecas · ${new Date().toLocaleString("es-MX")}</p>
+      ${localStorage.getItem("clinicName") || "Smile V.R"} · ${new Date().toLocaleString("es-MX")}</p>
     <table border="0" cellpadding="0" cellspacing="0">
       <thead><tr>${headerHtml}</tr></thead>
       <tbody>${rowsHtml}${totalHtml}</tbody>

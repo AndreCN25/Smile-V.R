@@ -13,17 +13,24 @@ export function Login({ onLogin }: LoginProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [clinicName, setClinicName] = useState(localStorage.getItem("clinicName") || "Creando Sonrisas Yucatecas");
+  const storedName = localStorage.getItem("clinicName");
+  const storedSlogan = localStorage.getItem("clinicSlogan");
+  const initialName = (!storedName || storedName === "Creando Sonrisas Yucatecas") ? "Smile V.R" : storedName;
+  const initialSlogan = (!storedSlogan || storedSlogan === "Yucatecas") ? "" : storedSlogan;
+
+  const [clinicName, setClinicName] = useState(initialName);
   const [clinicLogo, setClinicLogo] = useState(localStorage.getItem("clinicLogo") || "");
-  const [clinicSlogan, setClinicSlogan] = useState(localStorage.getItem("clinicSlogan") || "Yucatecas");
+  const [clinicSlogan, setClinicSlogan] = useState(initialSlogan);
 
   useEffect(() => {
     getSettings()
       .then((settings) => {
         if (settings) {
-          const name = settings.name || "Creando Sonrisas Yucatecas";
-          const logo = settings.logoUrl || "";
-          const slogan = settings.slogan || "";
+          const rawName = settings.name || settings.Name;
+          const rawSlogan = settings.slogan || settings.Slogan;
+          const name = (!rawName || rawName === "Creando Sonrisas Yucatecas") ? "Smile V.R" : rawName;
+          const logo = settings.logoUrl || settings.LogoUrl || "";
+          const slogan = (!rawSlogan || rawSlogan === "Yucatecas") ? "" : rawSlogan;
           
           localStorage.setItem("clinicName", name);
           localStorage.setItem("clinicLogo", logo);
@@ -37,8 +44,8 @@ export function Login({ onLogin }: LoginProps) {
       .catch((err) => console.error("Error loading settings in Login", err));
   }, []);
 
-  const displayTitle = clinicName === "Creando Sonrisas Yucatecas" ? "Creando Sonrisas" : clinicName;
-  const displaySlogan = clinicName === "Creando Sonrisas Yucatecas" ? "Yucatecas" : clinicSlogan;
+  const displayTitle = clinicName;
+  const displaySlogan = clinicSlogan;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
