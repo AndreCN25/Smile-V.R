@@ -392,14 +392,6 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
               </div>
             ))}
           </div>
-          
-          <div className="bg-red-50 rounded-2xl border p-5 mt-4" style={{ borderColor:"#FECACA" }}>
-            <h3 className="font-semibold text-sm mb-2 text-red-600">Zona de peligro</h3>
-            <p className="text-xs text-red-500 mb-4">Una vez que elimines tu cuenta, no hay vuelta atrás. Por favor, asegúrate de estar seguro antes de continuar.</p>
-            <button onClick={handleDeleteAccount} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 bg-red-600 text-white transition-all hover:bg-red-700">
-              <Trash2 className="w-4 h-4" /> Eliminar cuenta
-            </button>
-          </div>
         </div>
       )}
     </div>
