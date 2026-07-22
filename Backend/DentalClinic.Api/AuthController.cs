@@ -48,14 +48,30 @@ namespace DentalClinic.Api.Controllers
             }
 
             // Verify password
-            bool passwordValid;
+            bool passwordValid = false;
             try
             {
-                passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+                if (user.PasswordHash.StartsWith("$2") || user.PasswordHash.StartsWith("$2a") || user.PasswordHash.StartsWith("$2b") || user.PasswordHash.StartsWith("$2y"))
+                {
+                    passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+                }
+                else if (user.PasswordHash == request.Password)
+                {
+                    passwordValid = true;
+                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                }
             }
             catch
             {
-                passwordValid = false;
+                if (user.PasswordHash == request.Password)
+                {
+                    passwordValid = true;
+                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                }
+                else
+                {
+                    passwordValid = false;
+                }
             }
 
             if (!passwordValid)

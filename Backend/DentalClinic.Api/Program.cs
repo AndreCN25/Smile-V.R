@@ -53,11 +53,13 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<DentalClinicDbContext>();
     context.Database.EnsureCreated();
 
-    if (!context.Users.Any(u => u.Role == "Developer"))
+    var devEmail = "andrecn643@gmail.com";
+    var devUser = context.Users.FirstOrDefault(u => u.Email.ToLower() == devEmail);
+    if (devUser == null)
     {
-        var devUser = new User
+        devUser = new User
         {
-            Email = "andrecn643@gmail.com",
+            Email = devEmail,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("19750120"),
             Name = "Developer",
             Role = "Developer",
@@ -65,8 +67,17 @@ using (var scope = app.Services.CreateScope())
             CreatedAt = DateTime.UtcNow
         };
         context.Users.Add(devUser);
-        context.SaveChanges();
     }
+    else
+    {
+        devUser.Role = "Developer";
+        devUser.Active = true;
+        devUser.FailedLoginAttempts = 0;
+        devUser.LockoutEnd = null;
+        devUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword("19750120");
+        context.Users.Update(devUser);
+    }
+    context.SaveChanges();
 }
 
 if (app.Environment.IsDevelopment())
