@@ -37,7 +37,7 @@ namespace DentalClinic.Infrastructure.Persistence
         public UserRepository(DentalClinicDbContext context) : base(context) { }
         
         public async Task<User?> GetByEmailAsync(string email)
-            => await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            => await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
         
         public async Task<bool> ExistsByRoleAsync(string role)
             => await _context.Users.AnyAsync(u => u.Role == role);
