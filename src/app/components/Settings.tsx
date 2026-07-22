@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Save, CheckCircle, User, Building2, Clock, Bell, Lock, Palette, ChevronRight, Edit2, Trash2, MessageCircle } from "lucide-react";
+import { Save, CheckCircle, User, Building2, Clock, Bell, Lock, Palette, ChevronRight, Edit2, Trash2, MessageCircle, Terminal, AlertTriangle, RefreshCw, ShieldAlert } from "lucide-react";
 import { getWhatsAppConfig, saveWhatsAppConfig, getNotificationPreferences, saveNotificationPreferences, WhatsAppConfig, NotificationPreferences } from "../../services/whatsapp";
+import { getSettings, updateSettings, updateUserPassword, loginUser, getErrorLogs, clearErrorLogs, ErrorLog } from "../../services/api";
 
-import { getSettings, updateSettings, updateUserPassword, loginUser } from "../../services/api";
+type SettingsTab = "clinica" | "perfil" | "notificaciones" | "seguridad" | "logs";
 
-type SettingsTab = "clinica" | "perfil" | "notificaciones" | "seguridad";
+interface SettingsProps { defaultTab?: SettingsTab; userRole?: string; }
 
-interface SettingsProps { defaultTab?: SettingsTab; }
-
-export function Settings({ defaultTab = "clinica" }: SettingsProps) {
+export function Settings({ defaultTab = "clinica", userRole = "Administrador" }: SettingsProps) {
   const [tab, setTab]     = useState<SettingsTab>(defaultTab);
   const [toast, setToast] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -140,11 +139,23 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
 
 
 
+  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>(() => getErrorLogs());
+
+  function refreshLogs() {
+    setErrorLogs(getErrorLogs());
+  }
+
+  function handleClearLogs() {
+    clearErrorLogs();
+    setErrorLogs([]);
+  }
+
   const tabs: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }[] = [
     { id: "clinica",        label: "Clínica",        icon: Building2 },
     { id: "perfil",         label: "Mi perfil",      icon: User },
     { id: "notificaciones", label: "Notificaciones", icon: Bell },
     { id: "seguridad",      label: "Seguridad",      icon: Lock },
+    ...(userRole === "Developer" ? [{ id: "logs" as SettingsTab, label: "Logs de Sistema", icon: Terminal }] : []),
   ];
 
   return (
@@ -214,51 +225,53 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
             </div>
           </div>
 
-          {/* WhatsApp API Configuration */}
-          <div className="mt-6 pt-5 border-t" style={{ borderColor:"var(--border)" }}>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background:"#25D366", color:"#fff" }}>
-                <MessageCircle className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold" style={{ color:"var(--foreground)" }}>WhatsApp Business API</h4>
-                <p className="text-xs" style={{ color:"var(--muted-foreground)" }}>Configura las credenciales de Meta Cloud API para enviar mensajes</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color:"var(--foreground)" }}>Phone Number ID</label>
-                <input type="text" value={waConfig.phoneNumberId} onChange={(e) => setWaConfig({ ...waConfig, phoneNumberId: e.target.value })}
-                  placeholder="Ej: 123456789012345"
-                  className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color:"var(--foreground)" }}>Access Token</label>
-                <input type="password" value={waConfig.accessToken} onChange={(e) => setWaConfig({ ...waConfig, accessToken: e.target.value })}
-                  placeholder="EAAxxxxxxx..."
-                  className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
-              </div>
-              <div className="sm:col-span-2">
-                <div className="flex items-center justify-between p-3 rounded-xl" style={{ background:"var(--muted)" }}>
-                  <div>
-                    <p className="text-sm font-medium" style={{ color:"var(--foreground)" }}>Activar envío de mensajes</p>
-                    <p className="text-xs mt-0.5" style={{ color:"var(--muted-foreground)" }}>{waConfig.enabled ? "Los mensajes se enviarán automáticamente" : "Los mensajes están desactivados"}</p>
-                  </div>
-                  <button onClick={() => setWaConfig({ ...waConfig, enabled: !waConfig.enabled })}
-                    className="w-11 h-6 rounded-full relative transition-colors shrink-0"
-                    style={{ background: waConfig.enabled ? "#25D366" : "var(--muted-foreground)" }}>
-                    <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all" style={{ left: waConfig.enabled ? "calc(100% - 1.375rem)" : "0.125rem" }} />
-                  </button>
+          {/* WhatsApp API Configuration — ACCESIBLE ÚNICAMENTE PARA ROL DEVELOPER */}
+          {userRole === "Developer" && (
+            <div className="mt-6 pt-5 border-t" style={{ borderColor:"var(--border)" }}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background:"#25D366", color:"#fff" }}>
+                  <MessageCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold" style={{ color:"var(--foreground)" }}>WhatsApp Business API</h4>
+                  <p className="text-xs" style={{ color:"var(--muted-foreground)" }}>Configura las credenciales de Meta Cloud API para enviar mensajes</p>
                 </div>
               </div>
-            </div>
-            {!waConfig.phoneNumberId && (
-              <div className="mt-3 p-3 rounded-xl text-xs" style={{ background:"#FFFBEB", color:"#92400E", border:"1px solid #FDE68A" }}>
-                <p className="font-semibold">⚠ Credenciales no configuradas</p>
-                <p className="mt-1">Para enviar mensajes de WhatsApp necesitas una cuenta de Meta Business. Visita <a href="https://developers.facebook.com" target="_blank" rel="noopener" className="underline font-semibold">developers.facebook.com</a> para configurarla.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color:"var(--foreground)" }}>Phone Number ID</label>
+                  <input type="text" value={waConfig.phoneNumberId} onChange={(e) => setWaConfig({ ...waConfig, phoneNumberId: e.target.value })}
+                    placeholder="Ej: 123456789012345"
+                    className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color:"var(--foreground)" }}>Access Token</label>
+                  <input type="password" value={waConfig.accessToken} onChange={(e) => setWaConfig({ ...waConfig, accessToken: e.target.value })}
+                    placeholder="EAAxxxxxxx..."
+                    className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor:"var(--border)", color:"var(--foreground)", background:"var(--input-background)" }} />
+                </div>
+                <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between p-3 rounded-xl" style={{ background:"var(--muted)" }}>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color:"var(--foreground)" }}>Activar envío de mensajes</p>
+                      <p className="text-xs mt-0.5" style={{ color:"var(--muted-foreground)" }}>{waConfig.enabled ? "Los mensajes se enviarán automáticamente" : "Los mensajes están desactivados"}</p>
+                    </div>
+                    <button onClick={() => setWaConfig({ ...waConfig, enabled: !waConfig.enabled })}
+                      className="w-11 h-6 rounded-full relative transition-colors shrink-0"
+                      style={{ background: waConfig.enabled ? "#25D366" : "var(--muted-foreground)" }}>
+                      <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all" style={{ left: waConfig.enabled ? "calc(100% - 1.375rem)" : "0.125rem" }} />
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+              {!waConfig.phoneNumberId && (
+                <div className="mt-3 p-3 rounded-xl text-xs" style={{ background:"#FFFBEB", color:"#92400E", border:"1px solid #FDE68A" }}>
+                  <p className="font-semibold">⚠ Credenciales no configuradas</p>
+                  <p className="mt-1">Para enviar mensajes de WhatsApp necesitas una cuenta de Meta Business. Visita <a href="https://developers.facebook.com" target="_blank" rel="noopener" className="underline font-semibold">developers.facebook.com</a> para configurarla.</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <button onClick={save} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90" style={{ background:"var(--primary)", color:"#fff" }}>
             <Save className="w-4 h-4" /> Guardar cambios
@@ -391,6 +404,87 @@ export function Settings({ defaultTab = "clinica" }: SettingsProps) {
                 }
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── LOGS DE SISTEMA (DEVELOPER ONLY) ─── */}
+      {tab === "logs" && userRole === "Developer" && (
+        <div className="space-y-4">
+          <div className="bg-card rounded-2xl border p-5 space-y-4" style={{ borderColor:"var(--border)" }}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background:"#FEF2F2", color:"#DC2626" }}>
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base" style={{ color:"var(--foreground)" }}>Logs y Diagnóstico de Sistema</h3>
+                  <p className="text-xs" style={{ color:"var(--muted-foreground)" }}>Registro en tiempo real de excepciones, fallos de red y consultas del cliente</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={refreshLogs} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all" style={{ borderColor:"var(--border)", background:"var(--muted)", color:"var(--foreground)" }}>
+                  <RefreshCw className="w-3.5 h-3.5" /> Actualizar
+                </button>
+                {errorLogs.length > 0 && (
+                  <button onClick={handleClearLogs} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-all">
+                    <Trash2 className="w-3.5 h-3.5" /> Limpiar logs
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3.5 rounded-xl border" style={{ borderColor:"var(--border)", background:"var(--input-background)" }}>
+                <p className="text-xs font-medium" style={{ color:"var(--muted-foreground)" }}>Total de registros</p>
+                <p className="text-xl font-bold mt-1" style={{ color:"var(--foreground)" }}>{errorLogs.length}</p>
+              </div>
+              <div className="p-3.5 rounded-xl border" style={{ borderColor:"var(--border)", background:"var(--input-background)" }}>
+                <p className="text-xs font-medium" style={{ color:"var(--muted-foreground)" }}>Estado de API Local</p>
+                <p className="text-xs font-bold mt-2 text-emerald-600 flex items-center gap-1">
+                  <CheckCircle className="w-3.5 h-3.5" /> En línea / Respaldo Supabase
+                </p>
+              </div>
+              <div className="p-3.5 rounded-xl border" style={{ borderColor:"var(--border)", background:"var(--input-background)" }}>
+                <p className="text-xs font-medium" style={{ color:"var(--muted-foreground)" }}>Nivel de Acceso</p>
+                <p className="text-xs font-bold mt-2 text-indigo-600 flex items-center gap-1">
+                  <ShieldAlert className="w-3.5 h-3.5" /> Exclusivo Developer
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card rounded-2xl border p-5" style={{ borderColor:"var(--border)" }}>
+            <h4 className="font-semibold text-sm mb-3" style={{ color:"var(--foreground)" }}>Historial de Excepciones Capotadas</h4>
+            {errorLogs.length === 0 ? (
+              <div className="text-center py-10 space-y-2">
+                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-emerald-50 text-emerald-600">
+                  <CheckCircle className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-semibold" style={{ color:"var(--foreground)" }}>No se detectaron errores</p>
+                <p className="text-xs" style={{ color:"var(--muted-foreground)" }}>El sistema opera normalmente sin excepciones registradas.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 overflow-x-auto">
+                <div className="min-w-[600px]">
+                  {errorLogs.map((log) => (
+                    <div key={log.id} className="p-3 rounded-xl border mb-2 flex items-start justify-between gap-3 text-xs" style={{ borderColor:"var(--border)", background:"var(--input-background)" }}>
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold px-1.5 py-0.5 rounded bg-muted text-foreground uppercase">{log.method}</span>
+                            <span className="font-mono text-muted-foreground">{log.endpoint}</span>
+                          </div>
+                          <p className="font-mono text-red-600 mt-1">{log.message}</p>
+                        </div>
+                      </div>
+                      <span className="text-muted-foreground shrink-0 font-mono text-[11px]">{new Date(log.timestamp).toLocaleString("es-MX")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

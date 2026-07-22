@@ -70,7 +70,7 @@ export default function App() {
       {section === "promotions" && <Promotions />}
       {section === "reports" && <Reports onNavigate={navigateTo} />}
       {section === "schedule" && <Schedule />}
-      {section === "settings" && <Settings defaultTab={settingsTab} />}
+      {section === "settings" && <Settings defaultTab={settingsTab} userRole={user.role} />}
       {section === "users" && user.role === "Developer" && <UserManagement />}
     </Layout>
   );
