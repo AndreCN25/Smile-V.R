@@ -244,7 +244,11 @@ export async function getPatients() {
     async () => {
       const { data, error } = await supabase.from('patients').select('*').order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
-      return data || [];
+      return (data || []).map((p: any) => ({
+        ...p,
+        totalVisits: p.totalVisits ?? p.total_visits ?? 0,
+        lastVisit: p.lastVisit ?? p.last_visit ?? "",
+      }));
     }
   );
 }
@@ -258,7 +262,12 @@ export async function createPatient(patient: any) {
     },
     async () => {
       const { id, ...payload } = patient;
-      const { data, error } = await supabase.from('patients').insert([payload]).select().single();
+      const dbPayload = {
+        ...payload,
+        total_visits: payload.totalVisits ?? 0,
+        last_visit: payload.lastVisit ?? null
+      };
+      const { data, error } = await supabase.from('patients').insert([dbPayload]).select().single();
       if (error) throw new Error(error.message);
       return data;
     }
@@ -274,7 +283,14 @@ export async function updatePatient(id: string, updates: any) {
     },
     async () => {
       const { id: _, ...payload } = updates;
-      const { data, error } = await supabase.from('patients').update(payload).eq('id', id).select().single();
+      const dbPayload: any = { ...payload };
+      if (payload.totalVisits !== undefined) {
+        dbPayload.total_visits = payload.totalVisits;
+      }
+      if (payload.lastVisit !== undefined) {
+        dbPayload.last_visit = payload.lastVisit;
+      }
+      const { data, error } = await supabase.from('patients').update(dbPayload).eq('id', id).select().single();
       if (error) throw new Error(error.message);
       return data;
     }

@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronLeft, CheckCircle2, AlertCircle,
   XCircle, User, FileText, DollarSign, Stethoscope, AlertTriangle
 } from "lucide-react";
-import { getAppointments, createAppointment, updateAppointment, deleteAppointment, getPatients, getDoctors } from "../../services/api";
+import { getAppointments, createAppointment, updateAppointment, deleteAppointment, getPatients, getDoctors, updatePatient } from "../../services/api";
 import { sendAppointmentConfirmation, sendAppointmentCancellation, getNotificationPreferences } from "../../services/whatsapp";
 
 /* ── Types ─────────────────────────────────────────────── */
@@ -168,6 +168,21 @@ export function Appointments() {
   function openCreate() { setForm(makeEmpty(doctorsList)); setEditingId(null); setFormError(""); setShowForm(true); }
   function openEdit(a: Appointment) { const { id, ...r } = a; setForm(r); setEditingId(a.id); setFormError(""); setShowForm(true); }
 
+  async function syncPatientVisits(patientId: string, appointmentsList: Appointment[]) {
+    if (!patientId) return;
+    const completedAppts = appointmentsList.filter(a => a.patientId === patientId && a.status === "completada");
+    const count = completedAppts.length;
+    const sortedDates = completedAppts.map(a => a.date).sort((a, b) => b.localeCompare(a));
+    const lastDate = sortedDates.length > 0 ? sortedDates[0] : "";
+
+    try {
+      await updatePatient(patientId, { totalVisits: count, lastVisit: lastDate });
+      setPatients(prev => prev.map(p => p.id === patientId ? { ...p, totalVisits: count, lastVisit: lastDate } : p));
+    } catch (e) {
+      console.error("Error syncing patient visits:", e);
+    }
+  }
+
   async function save() {
     if (!form.patientId) { setFormError("Debes seleccionar un paciente registrado."); return; }
     if (!form.date || !form.time || !form.procedure) { setFormError("Completa todos los campos obligatorios."); return; }
@@ -187,16 +202,20 @@ export function Appointments() {
         const updated = await updateAppointment(editingId, form);
         const newAppts = appts.map((a) => a.id === editingId ? { ...a, ...updated } : a);
         setAppts(newAppts);
-        // refresh selected
         const sel = newAppts.find((a) => a.id === editingId);
         if (sel) setSelected(sel);
+
+        await syncPatientVisits(form.patientId, newAppts);
       } else {
         const na = await createAppointment(form);
         const p = patients.find(x => x.id === na.patientId);
         const d = doctorsList.find(x => x.id === na.doctorId);
         const newAp = { ...na, patient: { name: p?.name }, doctor: { name: d?.name } };
-        setAppts([newAp, ...appts]);
+        const newAppts = [newAp, ...appts];
+        setAppts(newAppts);
         setSelected(newAp);
+
+        await syncPatientVisits(form.patientId, newAppts);
       }
       setShowForm(false);
     } catch (e) {
@@ -207,11 +226,16 @@ export function Appointments() {
 
   async function del(id: string) {
     try {
+      const target = appts.find((a) => a.id === id);
       await deleteAppointment(id);
       const rem = appts.filter((a) => a.id !== id);
       setAppts(rem);
       setSelected(rem.length ? rem[0] : null);
       setDel(null);
+
+      if (target) {
+        await syncPatientVisits(target.patientId, rem);
+      }
     } catch (e) { console.error(e); }
   }
 
@@ -222,6 +246,11 @@ export function Appointments() {
       setAppts(newAppts);
       const sel = newAppts.find((a) => a.id === id);
       if (sel) setSelected(sel);
+
+      const targetAppt = appts.find((a) => a.id === id);
+      if (targetAppt) {
+        await syncPatientVisits(targetAppt.patientId, newAppts);
+      }
 
       // Send WhatsApp message on confirm or cancel
       if (status === "confirmada" || status === "cancelada") {
